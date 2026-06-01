@@ -5,7 +5,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typedRoutes: true,
+  typedRoutes: false,
   turbopack: {
     root
   }
