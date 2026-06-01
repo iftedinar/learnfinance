@@ -31,9 +31,12 @@ export default function DashboardPage() {
         <IngestionPanel />
         <Card>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Processing Queue</h2>
+            <h2 className="text-lg font-semibold">Demo Processing Queue</h2>
             <Badge tone="info">Private MVP</Badge>
           </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            These sample records show the intended layout. Real imported videos will appear here after Supabase job storage is connected.
+          </p>
           <div className="mt-4 space-y-4">
             {videos.map((video) => (
               <div key={video.id} className="rounded-md border border-border p-3">

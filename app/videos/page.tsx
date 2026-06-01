@@ -4,7 +4,10 @@ import { videos } from "@/lib/mock-data";
 export default function VideosPage() {
   return (
     <>
-      <PageHeader title="Video Library" description="Review transcript status, summaries, concepts, difficulty, and source links." />
+      <PageHeader title="Video Library" description="Review imported videos, transcript availability, summaries, concepts, difficulty, and source links." />
+      <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        These rows are demo records. After Supabase processing is connected, this page should show videos from the exact video, playlist, or channel URLs the user imports.
+      </div>
       <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full border-collapse bg-card text-left text-sm">
           <thead className="bg-muted text-muted-foreground">

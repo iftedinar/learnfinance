@@ -12,7 +12,8 @@ export async function POST(request: Request) {
     sourceType: payload.sourceType ?? "mixed",
     urls,
     includeTranscript: payload.includeTranscript === "on" || payload.includeTranscript === true,
-    maxVideos: payload.maxVideos ? Number(payload.maxVideos) : undefined
+    maxVideos: payload.maxVideos ? Number(payload.maxVideos) : undefined,
+    selectionMode: payload.selectionMode ?? "latest50"
   });
 
   if (!parsed.success) {
@@ -23,7 +24,8 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     status: "queued",
-    message: "Processing plan created. Wire this route to YouTube Data API, transcript fetching, embeddings, and Supabase job storage.",
+    message:
+      "This source is valid and ready to queue. Full title, transcript, caption, and video-list checks will run after the YouTube and Supabase processing jobs are connected.",
     plan
   });
 }
