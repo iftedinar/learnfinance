@@ -26,6 +26,8 @@ type ModelAnalysis = {
   studyGuide: string[];
   actionItems: string[];
   warnings: string[];
+  quizQuestions: Array<{ question: string; choices: string[]; answer: string; explanation: string }>;
+  simulationPrompts: Array<{ title: string; scenario: string; choices: string[]; answer: string; explanation: string }>;
   strategies: Array<Omit<LearningStrategy, "id" | "videoId">>;
   glossaryTerms: Array<{ term: string; definition: string }>;
 };
@@ -69,6 +71,25 @@ export async function extractKnowledge(input: ExtractionInput): Promise<Learning
 }
 
 async function fetchWebSource(url: string): Promise<ExtractedSource> {
+  const candidates = unique([url, stripTrackingParams(url)]);
+  for (const candidate of candidates) {
+    const source = await tryFetchWebSource(candidate, url);
+    if (source && source.text.length > 500) {
+      return source;
+    }
+  }
+
+  return {
+    id: `article-${hashText(url)}`,
+    sourceType: "article",
+    title: url,
+    url,
+    text: url,
+    missing: ["readable article text"]
+  };
+}
+
+async function tryFetchWebSource(url: string, originalUrl: string): Promise<ExtractedSource | undefined> {
   try {
     const response = await fetch(url, {
       headers: {
@@ -83,22 +104,15 @@ async function fetchWebSource(url: string): Promise<ExtractedSource> {
     const title = extractTitle(html) ?? url;
     const text = htmlToText(html).slice(0, maxContentCharacters);
     return {
-      id: `article-${hashText(url)}`,
+      id: `article-${hashText(originalUrl)}`,
       sourceType: "article",
       title,
-      url,
+      url: originalUrl,
       text,
       missing: text ? [] : ["readable article text"]
     };
   } catch {
-    return {
-      id: `article-${hashText(url)}`,
-      sourceType: "article",
-      title: url,
-      url,
-      text: url,
-      missing: ["readable article text"]
-    };
+    return undefined;
   }
 }
 
@@ -118,7 +132,9 @@ async function analyzeTextSource(source: ExtractedSource): Promise<LearningAnaly
       mainIdeas: modelAnalysis.mainIdeas,
       studyGuide: modelAnalysis.studyGuide,
       actionItems: modelAnalysis.actionItems,
-      warnings: modelAnalysis.warnings
+      warnings: modelAnalysis.warnings,
+      quizQuestions: modelAnalysis.quizQuestions,
+      simulationPrompts: modelAnalysis.simulationPrompts
     },
     sourceHealth: {
       hasTitle: Boolean(source.title),
@@ -184,6 +200,8 @@ Return JSON with:
   "studyGuide": ["study point"],
   "actionItems": ["practice task"],
   "warnings": ["risk or accuracy warning"],
+  "quizQuestions": [{"question": "question", "choices": ["A", "B", "C"], "answer": "A", "explanation": "why this is correct"}],
+  "simulationPrompts": [{"title": "scenario title", "scenario": "scenario", "choices": ["choice"], "answer": "best answer", "explanation": "feedback"}],
   "strategies": [{
     "name": "strategy/framework/concept",
     "marketType": "stocks/options/crypto/forex/investing/personal finance/etc",
@@ -228,6 +246,8 @@ function fallbackAnalysis(source: ExtractedSource, reason: string): ModelAnalysi
     studyGuide: ["Confirm OPENAI_API_KEY is set in Vercel and try again."],
     actionItems: ["Try pasting source text directly if the article or transcript cannot be fetched."],
     warnings: ["Do not treat this fallback as a full summary."],
+    quizQuestions: [],
+    simulationPrompts: [],
     strategies: [],
     glossaryTerms: []
   };
@@ -270,8 +290,29 @@ function normalizeModelAnalysis(value: Partial<ModelAnalysis>): ModelAnalysis {
     studyGuide: stringArray(value.studyGuide),
     actionItems: stringArray(value.actionItems),
     warnings: stringArray(value.warnings),
+    quizQuestions: Array.isArray(value.quizQuestions) ? value.quizQuestions.map(normalizeQuiz).slice(0, 8) : [],
+    simulationPrompts: Array.isArray(value.simulationPrompts) ? value.simulationPrompts.map(normalizeSimulation).slice(0, 8) : [],
     strategies: Array.isArray(value.strategies) ? value.strategies.map(normalizeStrategy).slice(0, 8) : [],
     glossaryTerms: Array.isArray(value.glossaryTerms) ? value.glossaryTerms.map(normalizeGlossaryTerm).slice(0, 20) : []
+  };
+}
+
+function normalizeQuiz(value: { question?: unknown; choices?: unknown; answer?: unknown; explanation?: unknown }) {
+  return {
+    question: stringOr(value.question, "No question returned."),
+    choices: stringArray(value.choices).slice(0, 5),
+    answer: stringOr(value.answer, "No answer returned."),
+    explanation: stringOr(value.explanation, "No explanation returned.")
+  };
+}
+
+function normalizeSimulation(value: { title?: unknown; scenario?: unknown; choices?: unknown; answer?: unknown; explanation?: unknown }) {
+  return {
+    title: stringOr(value.title, "Practice Scenario"),
+    scenario: stringOr(value.scenario, "No scenario returned."),
+    choices: stringArray(value.choices).slice(0, 5),
+    answer: stringOr(value.answer, "No answer returned."),
+    explanation: stringOr(value.explanation, "No explanation returned.")
   };
 }
 
@@ -318,4 +359,22 @@ function hashText(value: string) {
     hash |= 0;
   }
   return Math.abs(hash).toString(36);
+}
+
+function stripTrackingParams(value: string) {
+  try {
+    const url = new URL(value);
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_|gclid|fbclid|gad_|gbraid|wbraid|mc_)/i.test(key)) {
+        url.searchParams.delete(key);
+      }
+    }
+    return url.toString();
+  } catch {
+    return value;
+  }
+}
+
+function unique(values: string[]) {
+  return [...new Set(values)];
 }

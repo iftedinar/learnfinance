@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AiChatPanel } from "@/components/ai-chat-panel";
 import { Card, PageHeader } from "@/components/ui";
 import { readLearningAnalysis } from "@/lib/client-learning-store";
 import { emptyLearningAnalysis, type LearningAnalysis } from "@/lib/learning-materials";
@@ -41,6 +42,7 @@ export default function GlossaryPage() {
           })}
         </div>
       )}
+      <AiChatPanel analysis={analysis} title="Ask AI About Glossary Terms" />
     </>
   );
 }

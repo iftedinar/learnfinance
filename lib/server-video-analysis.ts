@@ -21,6 +21,8 @@ type ModelAnalysis = {
   studyGuide: string[];
   actionItems: string[];
   warnings: string[];
+  quizQuestions: Array<{ question: string; choices: string[]; answer: string; explanation: string }>;
+  simulationPrompts: Array<{ title: string; scenario: string; choices: string[]; answer: string; explanation: string }>;
   strategies: Array<Omit<LearningStrategy, "id" | "videoId">>;
   glossaryTerms: Array<{ term: string; definition: string }>;
 };
@@ -183,6 +185,8 @@ Return JSON with this exact shape:
   "studyGuide": ["what to study from this video"],
   "actionItems": ["paper practice or note-taking task"],
   "warnings": ["risk or accuracy warning"],
+  "quizQuestions": [{"question": "question", "choices": ["A", "B", "C"], "answer": "A", "explanation": "why this is correct"}],
+  "simulationPrompts": [{"title": "scenario title", "scenario": "scenario", "choices": ["choice"], "answer": "best answer", "explanation": "feedback"}],
   "strategies": [{
     "name": "strategy or concept name",
     "marketType": "stocks/options/crypto/forex/investing/personal finance/etc",
@@ -240,7 +244,9 @@ function buildVideo(metadata: YoutubeMetadata, transcript: { hasTranscript: bool
       mainIdeas: analysis.mainIdeas,
       studyGuide: analysis.studyGuide,
       actionItems: analysis.actionItems,
-      warnings: analysis.warnings
+      warnings: analysis.warnings,
+      quizQuestions: analysis.quizQuestions,
+      simulationPrompts: analysis.simulationPrompts
     },
     sourceHealth: {
       hasTitle: Boolean(metadata.title),
@@ -263,6 +269,8 @@ function fallbackAnalysis(metadata: YoutubeMetadata, transcript: string): ModelA
     studyGuide: transcript ? ["Review the transcript manually until AI analysis is available."] : ["Transcript is missing, so this cannot be accurately summarized yet."],
     actionItems: ["Confirm API keys are set in Vercel and restart/redeploy the app."],
     warnings: ["Do not treat metadata-only output as a full video summary."],
+    quizQuestions: [],
+    simulationPrompts: [],
     strategies: [],
     glossaryTerms: []
   };
@@ -277,8 +285,29 @@ function normalizeModelAnalysis(value: Partial<ModelAnalysis>): ModelAnalysis {
     studyGuide: stringArray(value.studyGuide),
     actionItems: stringArray(value.actionItems),
     warnings: stringArray(value.warnings),
+    quizQuestions: Array.isArray(value.quizQuestions) ? value.quizQuestions.map(normalizeQuiz).slice(0, 8) : [],
+    simulationPrompts: Array.isArray(value.simulationPrompts) ? value.simulationPrompts.map(normalizeSimulation).slice(0, 8) : [],
     strategies: Array.isArray(value.strategies) ? value.strategies.map(normalizeStrategy).slice(0, 8) : [],
     glossaryTerms: Array.isArray(value.glossaryTerms) ? value.glossaryTerms.map(normalizeGlossaryTerm).slice(0, 20) : []
+  };
+}
+
+function normalizeQuiz(value: { question?: unknown; choices?: unknown; answer?: unknown; explanation?: unknown }) {
+  return {
+    question: stringOr(value.question, "No question returned."),
+    choices: stringArray(value.choices).slice(0, 5),
+    answer: stringOr(value.answer, "No answer returned."),
+    explanation: stringOr(value.explanation, "No explanation returned.")
+  };
+}
+
+function normalizeSimulation(value: { title?: unknown; scenario?: unknown; choices?: unknown; answer?: unknown; explanation?: unknown }) {
+  return {
+    title: stringOr(value.title, "Practice Scenario"),
+    scenario: stringOr(value.scenario, "No scenario returned."),
+    choices: stringArray(value.choices).slice(0, 5),
+    answer: stringOr(value.answer, "No answer returned."),
+    explanation: stringOr(value.explanation, "No explanation returned.")
   };
 }
 

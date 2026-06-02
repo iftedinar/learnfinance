@@ -3,7 +3,7 @@ import Link from "next/link";
 const navItems = [
   ["Dashboard", "/"],
   ["Channels", "/channels"],
-  ["Videos", "/videos"],
+  ["Resources", "/videos"],
   ["Strategies", "/strategies"],
   ["Simulations", "/simulations"],
   ["Roadmap", "/roadmap"],

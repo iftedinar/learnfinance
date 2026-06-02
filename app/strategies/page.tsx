@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AiChatPanel } from "@/components/ai-chat-panel";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { readLearningAnalysis } from "@/lib/client-learning-store";
 import { emptyLearningAnalysis, type LearningAnalysis } from "@/lib/learning-materials";
@@ -59,6 +60,7 @@ export default function StrategiesPage() {
           })}
         </div>
       )}
+      <AiChatPanel analysis={analysis} title="Ask AI About Strategies and Concepts" />
     </>
   );
 }

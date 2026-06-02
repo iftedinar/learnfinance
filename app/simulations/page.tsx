@@ -1,44 +1,70 @@
-import { Card, PageHeader } from "@/components/ui";
+"use client";
 
-const simulations = [
-  {
-    title: "Risk 1% on a $1,000 Account",
-    scenario: "You are practicing with a $1,000 account and want to risk 1% on one trade. What is the maximum planned loss?",
-    choices: ["$10", "$25", "$100"],
-    answer: "$10",
-    explanation: "1% of $1,000 is $10. Position size should be calculated from this max loss and the stop distance."
-  },
-  {
-    title: "VWAP Break With High Volume",
-    scenario: "Price reclaims VWAP, volume expands, and resistance is nearby. What should a disciplined trader check before entry?",
-    choices: ["Reward-to-risk and stop location", "Only the green candle", "Social media sentiment"],
-    answer: "Reward-to-risk and stop location",
-    explanation: "A setup is incomplete until invalidation, position size, and target distance are defined."
-  }
-];
+import { useEffect, useState } from "react";
+import { AiChatPanel } from "@/components/ai-chat-panel";
+import { Card, PageHeader } from "@/components/ui";
+import { readLearningAnalysis } from "@/lib/client-learning-store";
+import { emptyLearningAnalysis, type LearningAnalysis } from "@/lib/learning-materials";
 
 export default function SimulationsPage() {
+  const [analysis, setAnalysis] = useState<LearningAnalysis>(emptyLearningAnalysis);
+
+  useEffect(() => {
+    const refresh = () => setAnalysis(readLearningAnalysis());
+    refresh();
+    window.addEventListener("learn-finance-analysis-updated", refresh);
+    return () => window.removeEventListener("learn-finance-analysis-updated", refresh);
+  }, []);
+
+  const quizzes = analysis.videos.flatMap((video) => (video.materials.quizQuestions ?? []).map((quiz) => ({ ...quiz, source: video.title })));
+  const simulations = analysis.videos.flatMap((video) => (video.materials.simulationPrompts ?? []).map((simulation) => ({ ...simulation, source: video.title })));
+
   return (
     <>
-      <PageHeader title="Simulations" description="Practice finance and trading concepts with structured scenarios before risking real money." />
-      <div className="grid gap-4 md:grid-cols-2">
-        {simulations.map((simulation) => (
-          <Card key={simulation.title}>
-            <h2 className="text-xl font-semibold">{simulation.title}</h2>
-            <p className="mt-3 text-muted-foreground">{simulation.scenario}</p>
-            <div className="mt-4 grid gap-2">
-              {simulation.choices.map((choice) => (
-                <button key={choice} className="rounded-md border border-border px-3 py-2 text-left text-sm hover:border-primary">
-                  {choice}
-                </button>
-              ))}
-            </div>
-            <div className="mt-4 rounded-md bg-muted p-3 text-sm">
-              <strong>Answer:</strong> {simulation.answer}. {simulation.explanation}
-            </div>
-          </Card>
-        ))}
-      </div>
+      <PageHeader title="Quizzes and Simulations" description="Practice questions and scenario prompts generated from your extracted resources." />
+      {!quizzes.length && !simulations.length ? (
+        <Card>
+          <h2 className="text-lg font-semibold">No quizzes or simulations yet</h2>
+          <p className="mt-2 text-muted-foreground">Extract a resource with a valid OpenAI key. The app will generate quizzes and scenario prompts from the material.</p>
+        </Card>
+      ) : null}
+
+      {quizzes.length ? (
+        <section>
+          <h2 className="mb-3 text-xl font-semibold">Quiz Questions</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {quizzes.map((quiz) => (
+              <Card key={`${quiz.source}-${quiz.question}`}>
+                <p className="text-xs text-muted-foreground">{quiz.source}</p>
+                <h3 className="mt-2 font-semibold">{quiz.question}</h3>
+                <ul className="mt-3 list-inside list-disc text-sm text-muted-foreground">
+                  {quiz.choices.map((choice) => <li key={choice}>{choice}</li>)}
+                </ul>
+                <p className="mt-3 text-sm"><strong>Answer:</strong> {quiz.answer}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{quiz.explanation}</p>
+              </Card>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {simulations.length ? (
+        <section className="mt-8">
+          <h2 className="mb-3 text-xl font-semibold">Simulation Prompts</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {simulations.map((simulation) => (
+              <Card key={`${simulation.source}-${simulation.title}`}>
+                <p className="text-xs text-muted-foreground">{simulation.source}</p>
+                <h3 className="mt-2 font-semibold">{simulation.title}</h3>
+                <p className="mt-3 text-sm text-muted-foreground">{simulation.scenario}</p>
+                <p className="mt-3 text-sm"><strong>Best answer:</strong> {simulation.answer}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{simulation.explanation}</p>
+              </Card>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      <AiChatPanel analysis={analysis} title="Ask AI About These Practice Questions" />
     </>
   );
 }

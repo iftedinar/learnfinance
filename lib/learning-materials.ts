@@ -19,6 +19,8 @@ export type LearningVideo = {
     studyGuide: string[];
     actionItems: string[];
     warnings: string[];
+    quizQuestions?: QuizQuestion[];
+    simulationPrompts?: SimulationPrompt[];
   };
   sourceHealth: {
     hasTitle: boolean;
@@ -27,6 +29,21 @@ export type LearningVideo = {
     transcriptCharacterCount: number;
     missing: string[];
   };
+};
+
+export type QuizQuestion = {
+  question: string;
+  choices: string[];
+  answer: string;
+  explanation: string;
+};
+
+export type SimulationPrompt = {
+  title: string;
+  scenario: string;
+  choices: string[];
+  answer: string;
+  explanation: string;
 };
 
 export type LearningStrategy = {
@@ -68,3 +85,5 @@ export const emptyLearningAnalysis: LearningAnalysis = {
 };
 
 export type StoredLearningAnalysis = LearningAnalysis;
+
+export const savedLearningStoreKey = "learn-finance-saved-v1";

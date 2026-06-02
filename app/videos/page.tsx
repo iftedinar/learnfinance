@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { AiChatPanel } from "@/components/ai-chat-panel";
+import { ResourceActions } from "@/components/resource-actions";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { readLearningAnalysis } from "@/lib/client-learning-store";
 import { emptyLearningAnalysis, type LearningAnalysis } from "@/lib/learning-materials";
@@ -30,9 +33,9 @@ export default function VideosPage() {
             <Card key={video.id}>
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <a className="text-xl font-semibold text-accent" href={video.youtubeUrl} target="_blank" rel="noreferrer">
+                  <Link className="text-xl font-semibold text-accent" href={`/resources/${encodeURIComponent(video.id)}`}>
                     {video.title}
-                  </a>
+                  </Link>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {video.channelTitle ?? "Unknown channel"} {video.publishedAt ? `| ${new Date(video.publishedAt).toLocaleDateString()}` : ""}
                   </p>
@@ -59,6 +62,7 @@ export default function VideosPage() {
                   : "Title, publish date, and transcript were available."}{" "}
                 Transcript characters: {video.sourceHealth.transcriptCharacterCount}.
               </div>
+              <ResourceActions resource={video} />
             </Card>
           ))}
         </div>
@@ -67,6 +71,7 @@ export default function VideosPage() {
         <h2 className="text-lg font-semibold">Search Saved Content</h2>
         <input className="mt-3 w-full rounded-md border border-border bg-background p-3 text-sm" placeholder="Search will be connected after saved analysis moves from browser storage to Supabase." />
       </Card>
+      <AiChatPanel analysis={analysis} title="Ask AI About Your Resources" />
     </>
   );
 }

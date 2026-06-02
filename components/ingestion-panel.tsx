@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui";
+import { downloadAnalysisDoc, downloadAnalysisPdf } from "@/lib/client-export";
 import { mergeLearningAnalysis, readLearningAnalysis, saveLearningAnalysis } from "@/lib/client-learning-store";
 import type { LearningAnalysis } from "@/lib/learning-materials";
 import { splitUrls } from "@/lib/youtube-source";
@@ -96,12 +97,12 @@ export function IngestionPanel() {
           >
             {isSubmitting ? "Extracting Knowledge" : "Extract Knowledge"}
           </button>
-          <a href="/api/export?format=doc" className="rounded-md border border-border px-4 py-2 text-sm font-semibold">
+          <button type="button" onClick={() => downloadAnalysisDoc(readLearningAnalysis())} className="rounded-md border border-border px-4 py-2 text-sm font-semibold">
             Download Word Doc
-          </a>
-          <a href="/api/export?format=pdf" className="rounded-md border border-border px-4 py-2 text-sm font-semibold">
+          </button>
+          <button type="button" onClick={() => downloadAnalysisPdf(readLearningAnalysis())} className="rounded-md border border-border px-4 py-2 text-sm font-semibold">
             Download PDF
-          </a>
+          </button>
         </div>
       </form>
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Badge, Card } from "@/components/ui";
-import { readLearningAnalysis } from "@/lib/client-learning-store";
+import { clearLearningAnalysis, readLearningAnalysis } from "@/lib/client-learning-store";
 import { emptyLearningAnalysis, type LearningAnalysis } from "@/lib/learning-materials";
 
 export function LearningDashboard() {
@@ -39,7 +39,14 @@ export function LearningDashboard() {
       <Card>
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Learning Materials</h2>
-          <Badge tone="info">Video-first MVP</Badge>
+          <div className="flex items-center gap-2">
+            <Badge tone="info">Knowledge MVP</Badge>
+            {analysis.videos.length ? (
+              <button onClick={clearLearningAnalysis} className="rounded-md border border-red-200 px-3 py-1 text-sm font-semibold text-red-700">
+                Reset
+              </button>
+            ) : null}
+          </div>
         </div>
         {analysis.videos.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
