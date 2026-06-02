@@ -1,56 +1,48 @@
 import { NextResponse } from "next/server";
-import { analyzeYoutubeVideos } from "@/lib/server-video-analysis";
-import { createProcessingPlan, sourceRequestSchema } from "@/lib/youtube-source";
+import { extractKnowledge } from "@/lib/server-knowledge-extraction";
+import { splitUrls } from "@/lib/youtube-source";
 
 export async function POST(request: Request) {
-  const contentType = request.headers.get("content-type") ?? "";
-  const payload = contentType.includes("application/json")
-    ? await request.json()
-    : Object.fromEntries((await request.formData()).entries());
+  const payload = await readPayload(request);
+  const urls = Array.isArray(payload.urls)
+    ? payload.urls.map(String).filter(Boolean)
+    : splitUrls(typeof payload.urls === "string" ? payload.urls : "");
+  const notes = typeof payload.notes === "string" ? payload.notes.trim() : "";
 
-  const urls = typeof payload.urls === "string" ? payload.urls.split(/\s+/).filter(Boolean) : payload.urls;
-  const parsed = sourceRequestSchema.safeParse({
-    sourceType: payload.sourceType ?? "mixed",
-    urls,
-    includeTranscript: payload.includeTranscript === "on" || payload.includeTranscript === true,
-    maxVideos: payload.maxVideos ? Number(payload.maxVideos) : undefined,
-    selectionMode: payload.selectionMode ?? "latest50"
-  });
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid YouTube source request", details: parsed.error.flatten() }, { status: 400 });
+  if (urls.length === 0 && !notes) {
+    return NextResponse.json(
+      {
+        status: "empty_source",
+        message: "Paste a YouTube video URL, article/webpage URL, or notes to extract learning materials."
+      },
+      { status: 400 }
+    );
   }
 
-  const plan = createProcessingPlan(parsed.data);
-
-  if (plan.sourceType !== "video") {
-    return NextResponse.json({
-      status: "needs_video_urls",
-      message:
-        "For the first working version, paste one or two direct YouTube video URLs. Channel and playlist imports will be added after the video analyzer is stable.",
-      plan
-    });
-  }
-
-  let analysis;
   try {
-    analysis = await analyzeYoutubeVideos(parsed.data.urls);
+    const analysis = await extractKnowledge({ urls, notes });
+    return NextResponse.json({
+      status: "processed",
+      message:
+        "Knowledge extraction finished. Results are saved in this browser and available in the Videos, Strategies, and Glossary tabs.",
+      analysis
+    });
   } catch (caught) {
     return NextResponse.json(
       {
         status: "failed",
-        message: caught instanceof Error ? caught.message : "Video analysis failed.",
-        plan
+        message: caught instanceof Error ? caught.message : "Knowledge extraction failed."
       },
       { status: 422 }
     );
   }
+}
 
-  return NextResponse.json({
-    status: "processed",
-    message:
-      "Video analysis finished. Results were extracted from the transcript when available; otherwise the app marks the output as metadata-only.",
-    plan,
-    analysis
-  });
+async function readPayload(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    return await request.json();
+  }
+
+  return Object.fromEntries((await request.formData()).entries());
 }

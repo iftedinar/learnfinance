@@ -4,6 +4,7 @@ export type AnalysisStatus = "processed" | "metadata_only" | "transcript_missing
 
 export type LearningVideo = {
   id: string;
+  sourceType?: "youtube" | "article" | "notes";
   title: string;
   youtubeUrl: string;
   youtubeVideoId: string;

@@ -21,7 +21,7 @@ export default function VideosPage() {
 
   return (
     <>
-      <PageHeader title="Video Library" description="Review analyzed videos, transcript availability, summaries, source checks, and study materials." />
+      <PageHeader title="Resource Library" description="Review analyzed videos, articles, notes, summaries, source checks, and study materials." />
       {analysis.videos.length === 0 ? (
         <EmptyState />
       ) : (
@@ -74,9 +74,9 @@ export default function VideosPage() {
 function EmptyState() {
   return (
     <Card>
-      <h2 className="text-lg font-semibold">No analyzed videos yet</h2>
+      <h2 className="text-lg font-semibold">No analyzed resources yet</h2>
       <p className="mt-2 text-muted-foreground">
-        Paste one or two direct YouTube video URLs on the Dashboard. After analysis, this page will show summaries, transcript status, study materials, key concepts, and source health.
+        Add a YouTube video, article URL, webpage, or pasted notes on the Dashboard. After extraction, this page will show summaries, study materials, key concepts, and source health.
       </p>
     </Card>
   );

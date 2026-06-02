@@ -43,7 +43,7 @@ export function LearningDashboard() {
         </div>
         {analysis.videos.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            No videos have been analyzed yet. Paste one or two direct YouTube video URLs, then the extracted summaries, study guide, strategies, and glossary terms will appear here and in the library tabs.
+            No resources have been analyzed yet. Add a YouTube video, article URL, webpage, or pasted notes, then the extracted summaries, study guide, concepts, and glossary terms will appear here and in the library tabs.
           </p>
         ) : (
           <div className="mt-4 space-y-4">

@@ -148,21 +148,23 @@ async function analyzeWithOpenAI(metadata: YoutubeMetadata, transcript: string):
     return fallbackAnalysis(metadata, transcript);
   }
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const content = transcript || metadata.description || metadata.title;
-  const response = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-    temperature: 0.2,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content:
-          "You extract finance learning materials from YouTube transcript text. Return only valid JSON. Do not give financial advice, buy/sell signals, or guaranteed outcomes."
-      },
-      {
-        role: "user",
-        content: `Analyze this finance learning video for a beginner. If transcript text is missing, say the analysis is metadata-only and avoid pretending you saw the full video.
+  let raw: string | null | undefined;
+  try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You extract finance learning materials from YouTube transcript text. Return only valid JSON. Do not give financial advice, buy/sell signals, or guaranteed outcomes."
+        },
+        {
+          role: "user",
+          content: `Analyze this finance learning video for a beginner. If transcript text is missing, say the analysis is metadata-only and avoid pretending you saw the full video.
 
 Title: ${metadata.title}
 Channel: ${metadata.channelTitle ?? "Unknown"}
@@ -197,11 +199,14 @@ Return JSON with this exact shape:
   }],
   "glossaryTerms": [{"term": "term", "definition": "plain English definition"}]
 }`
-      }
-    ]
-  });
+        }
+      ]
+    });
+    raw = response.choices[0]?.message.content;
+  } catch {
+    return fallbackAnalysis(metadata, transcript);
+  }
 
-  const raw = response.choices[0]?.message.content;
   if (!raw) {
     return fallbackAnalysis(metadata, transcript);
   }

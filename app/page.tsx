@@ -6,8 +6,8 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        title="Learn finance from YouTube content"
-        description="Start with one or two direct YouTube video URLs. The app extracts summaries, key concepts, strategies, glossary terms, and study materials from transcripts when available."
+        title="Extract finance knowledge from your sources"
+        description="Start with a YouTube video, article URL, webpage, or pasted notes. The app turns source material into summaries, key concepts, study guides, glossary terms, and strategy/framework notes."
       />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
