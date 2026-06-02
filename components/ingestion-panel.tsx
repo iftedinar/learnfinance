@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui";
+import { mergeLearningAnalysis, readLearningAnalysis, saveLearningAnalysis } from "@/lib/client-learning-store";
+import type { LearningAnalysis } from "@/lib/learning-materials";
 import { detectSourceType, splitUrls } from "@/lib/youtube-source";
 
 type ProcessingResult = {
@@ -22,6 +24,7 @@ type ProcessingResult = {
     steps: string[];
     nextUserAction: string;
   };
+  analysis?: LearningAnalysis;
 };
 
 export function IngestionPanel() {
@@ -66,6 +69,9 @@ export function IngestionPanel() {
       }
 
       setResult(payload);
+      if (payload.analysis) {
+        saveLearningAnalysis(mergeLearningAnalysis(readLearningAnalysis(), payload.analysis));
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not queue this source.");
     } finally {
@@ -78,7 +84,7 @@ export function IngestionPanel() {
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Add YouTube Source</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Paste one video, multiple videos, a playlist, or a channel URL. The app will only process what the user provides.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Paste one or two direct YouTube video URLs to extract learning materials. Channel and playlist imports are planned next.</p>
         </div>
         <span className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">Detected: {sourceType}</span>
       </div>
@@ -138,7 +144,7 @@ export function IngestionPanel() {
             disabled={isSubmitting}
             className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? "Checking Source" : "Check and Queue Source"}
+            {isSubmitting ? "Analyzing Video" : "Analyze Video"}
           </button>
           <a href="/api/export?format=doc" className="rounded-md border border-border px-4 py-2 text-sm font-semibold">
             Download Word Doc
@@ -154,9 +160,14 @@ export function IngestionPanel() {
       {result ? (
         <div className="mt-5 space-y-4 rounded-md border border-border bg-background p-4">
           <div>
-            <h3 className="font-semibold">Import Plan Created</h3>
+            <h3 className="font-semibold">{result.status === "processed" ? "Analysis Complete" : "Import Needs Direct Video URLs"}</h3>
             <p className="mt-1 text-sm text-muted-foreground">{result.message}</p>
           </div>
+          {result.analysis ? (
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+              Saved {result.analysis.videos.length} video analysis result{result.analysis.videos.length === 1 ? "" : "s"}, {result.analysis.strategies.length} strategies/concepts, and {result.analysis.glossaryTerms.length} glossary terms. Open the Videos, Strategies, and Glossary tabs to study them.
+            </div>
+          ) : null}
           <div className="grid gap-3 text-sm md:grid-cols-3">
             <SummaryItem label="Source type" value={result.plan.sourceType} />
             <SummaryItem label="URLs accepted" value={result.plan.acceptedUrlCount} />

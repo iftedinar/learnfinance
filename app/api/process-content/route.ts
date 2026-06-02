@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { analyzeYoutubeVideos } from "@/lib/server-video-analysis";
 import { createProcessingPlan, sourceRequestSchema } from "@/lib/youtube-source";
 
 export async function POST(request: Request) {
@@ -22,10 +23,34 @@ export async function POST(request: Request) {
 
   const plan = createProcessingPlan(parsed.data);
 
+  if (plan.sourceType !== "video") {
+    return NextResponse.json({
+      status: "needs_video_urls",
+      message:
+        "For the first working version, paste one or two direct YouTube video URLs. Channel and playlist imports will be added after the video analyzer is stable.",
+      plan
+    });
+  }
+
+  let analysis;
+  try {
+    analysis = await analyzeYoutubeVideos(parsed.data.urls);
+  } catch (caught) {
+    return NextResponse.json(
+      {
+        status: "failed",
+        message: caught instanceof Error ? caught.message : "Video analysis failed.",
+        plan
+      },
+      { status: 422 }
+    );
+  }
+
   return NextResponse.json({
-    status: "queued",
+    status: "processed",
     message:
-      "This source is valid and ready to queue. Full title, transcript, caption, and video-list checks will run after the YouTube and Supabase processing jobs are connected.",
-    plan
+      "Video analysis finished. Results were extracted from the transcript when available; otherwise the app marks the output as metadata-only.",
+    plan,
+    analysis
   });
 }

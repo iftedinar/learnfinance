@@ -65,7 +65,7 @@ export function classifyYoutubeUrl(url: string): SourceType | undefined {
 export function createProcessingPlan(request: SourceRequest) {
   const sourceType = request.sourceType === "mixed" ? detectSourceType(request.urls) : request.sourceType;
   const isVideoOnly = sourceType === "video";
-  const maxVideos = request.maxVideos ?? (isVideoOnly ? request.urls.length : 50);
+  const maxVideos = isVideoOnly ? Math.min(request.urls.length, 2) : request.maxVideos ?? 50;
 
   return {
     sourceType,

@@ -1,45 +1,98 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Badge, Card, PageHeader } from "@/components/ui";
-import { videos } from "@/lib/mock-data";
+import { readLearningAnalysis } from "@/lib/client-learning-store";
+import { emptyLearningAnalysis, type LearningAnalysis } from "@/lib/learning-materials";
 
 export default function VideosPage() {
+  const [analysis, setAnalysis] = useState<LearningAnalysis>(emptyLearningAnalysis);
+
+  useEffect(() => {
+    const refresh = () => setAnalysis(readLearningAnalysis());
+    refresh();
+    window.addEventListener("learn-finance-analysis-updated", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("learn-finance-analysis-updated", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
   return (
     <>
-      <PageHeader title="Video Library" description="Review imported videos, transcript availability, summaries, concepts, difficulty, and source links." />
-      <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-        These rows are demo records. After Supabase processing is connected, this page should show videos from the exact video, playlist, or channel URLs the user imports.
-      </div>
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full border-collapse bg-card text-left text-sm">
-          <thead className="bg-muted text-muted-foreground">
-            <tr>
-              <th className="p-3">Title</th>
-              <th className="p-3">Published</th>
-              <th className="p-3">Transcript</th>
-              <th className="p-3">Difficulty</th>
-            </tr>
-          </thead>
-          <tbody>
-            {videos.map((video) => (
-              <tr key={video.id} className="border-t border-border align-top">
-                <td className="p-3">
-                  <a className="font-semibold text-accent" href={video.youtubeUrl}>{video.title}</a>
-                  <p className="mt-2 text-muted-foreground">{video.summary}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {video.keyConcepts.map((concept) => <Badge key={concept}>{concept}</Badge>)}
-                  </div>
-                </td>
-                <td className="p-3">{video.publishedAt}</td>
-                <td className="p-3"><Badge tone={video.transcriptStatus === "processed" ? "success" : "warning"}>{video.transcriptStatus.replace("_", " ")}</Badge></td>
-                <td className="p-3">{video.difficulty}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <PageHeader title="Video Library" description="Review analyzed videos, transcript availability, summaries, source checks, and study materials." />
+      {analysis.videos.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <div className="grid gap-4">
+          {analysis.videos.map((video) => (
+            <Card key={video.id}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <a className="text-xl font-semibold text-accent" href={video.youtubeUrl} target="_blank" rel="noreferrer">
+                    {video.title}
+                  </a>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {video.channelTitle ?? "Unknown channel"} {video.publishedAt ? `| ${new Date(video.publishedAt).toLocaleDateString()}` : ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone={video.transcriptStatus === "processed" ? "success" : "warning"}>{video.transcriptStatus.replace("_", " ")}</Badge>
+                  <Badge>{video.difficulty}</Badge>
+                </div>
+              </div>
+
+              <p className="mt-4 text-muted-foreground">{video.summary}</p>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <MaterialList title="Main Ideas" items={video.materials.mainIdeas} />
+                <MaterialList title="Study Guide" items={video.materials.studyGuide} />
+                <MaterialList title="Practice Tasks" items={video.materials.actionItems} />
+                <MaterialList title="Risk and Accuracy Warnings" items={video.materials.warnings} />
+              </div>
+
+              <div className="mt-4 rounded-md bg-muted p-3 text-sm">
+                <strong>Source check:</strong>{" "}
+                {video.sourceHealth.missing.length
+                  ? `Missing ${video.sourceHealth.missing.join(", ")}.`
+                  : "Title, publish date, and transcript were available."}{" "}
+                Transcript characters: {video.sourceHealth.transcriptCharacterCount}.
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
       <Card className="mt-6">
         <h2 className="text-lg font-semibold">Search Saved Content</h2>
-        <input className="mt-3 w-full rounded-md border border-border bg-background p-3 text-sm" placeholder="Search summaries, strategies, glossary terms, or notes" />
+        <input className="mt-3 w-full rounded-md border border-border bg-background p-3 text-sm" placeholder="Search will be connected after saved analysis moves from browser storage to Supabase." />
       </Card>
     </>
+  );
+}
+
+function EmptyState() {
+  return (
+    <Card>
+      <h2 className="text-lg font-semibold">No analyzed videos yet</h2>
+      <p className="mt-2 text-muted-foreground">
+        Paste one or two direct YouTube video URLs on the Dashboard. After analysis, this page will show summaries, transcript status, study materials, key concepts, and source health.
+      </p>
+    </Card>
+  );
+}
+
+function MaterialList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div>
+      <h3 className="font-semibold">{title}</h3>
+      {items.length ? (
+        <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
+          {items.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">No items extracted.</p>
+      )}
+    </div>
   );
 }

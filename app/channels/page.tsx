@@ -1,39 +1,15 @@
-import { Badge, Card, PageHeader } from "@/components/ui";
-import { channels } from "@/lib/mock-data";
+import { Card, PageHeader } from "@/components/ui";
 
 export default function ChannelsPage() {
   return (
     <>
-      <PageHeader title="Channels" description="Track channel-level ingestion, transcript coverage, topics, and strategy counts." />
-      <div className="grid gap-4">
-        {channels.map((channel) => (
-          <Card key={channel.id}>
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">{channel.name}</h2>
-                <a className="mt-1 block text-sm text-accent" href={channel.url}>{channel.url}</a>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {channel.topics.map((topic) => <Badge key={topic}>{topic}</Badge>)}
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3 text-center text-sm">
-                <Metric label="Videos" value={channel.videoCount} />
-                <Metric label="Strategies" value={channel.strategyCount} />
-                <Metric label="Status" value={channel.status.replace("_", " ")} />
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+      <PageHeader title="Channels" description="Channel imports will appear here after channel expansion is connected." />
+      <Card>
+        <h2 className="text-lg font-semibold">No channels imported yet</h2>
+        <p className="mt-2 text-muted-foreground">
+          The current working version analyzes one or two direct YouTube video URLs first. Channel processing will be added after video analysis is stable, with options like latest 50, first 50, playlist order, and most viewed.
+        </p>
+      </Card>
     </>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-md bg-muted px-3 py-2">
-      <div className="font-semibold">{value}</div>
-      <div className="text-muted-foreground">{label}</div>
-    </div>
   );
 }
