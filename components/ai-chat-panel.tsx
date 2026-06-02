@@ -54,8 +54,12 @@ function buildContext(analysis: LearningAnalysis) {
     ...analysis.videos.map((video) => [
       `Resource: ${video.title}`,
       `Summary: ${video.summary}`,
+      `Detailed summary: ${video.materials.detailedSummary ?? ""}`,
       `Main ideas: ${video.materials.mainIdeas.join("; ")}`,
       `Study guide: ${video.materials.studyGuide.join("; ")}`,
+      `Formulas/models: ${(video.materials.formulas ?? []).join("; ")}`,
+      `Examples: ${(video.materials.examples ?? []).join("; ")}`,
+      `Valuable lessons: ${(video.materials.valuableLessons ?? []).join("; ")}`,
       `Warnings: ${video.materials.warnings.join("; ")}`
     ].join("\n")),
     ...analysis.strategies.map((strategy) => `Strategy/concept: ${strategy.name}\n${strategy.setup}\nChecklist: ${strategy.checklist.join("; ")}`),

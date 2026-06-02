@@ -4,7 +4,7 @@ export type AnalysisStatus = "processed" | "metadata_only" | "transcript_missing
 
 export type LearningVideo = {
   id: string;
-  sourceType?: "youtube" | "article" | "notes";
+  sourceType?: "youtube" | "article" | "notes" | "file";
   title: string;
   youtubeUrl: string;
   youtubeVideoId: string;
@@ -15,9 +15,13 @@ export type LearningVideo = {
   keyConcepts: string[];
   difficulty: "beginner" | "intermediate" | "advanced";
   materials: {
+    detailedSummary?: string;
     mainIdeas: string[];
     studyGuide: string[];
     actionItems: string[];
+    formulas?: string[];
+    examples?: string[];
+    valuableLessons?: string[];
     warnings: string[];
     quizQuestions?: QuizQuestion[];
     simulationPrompts?: SimulationPrompt[];

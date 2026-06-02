@@ -16,6 +16,8 @@ type ProcessingResult = {
 export function IngestionPanel() {
   const [urls, setUrls] = useState("");
   const [notes, setNotes] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [fileMessage, setFileMessage] = useState<string | undefined>();
   const [result, setResult] = useState<ProcessingResult | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,21 +28,24 @@ export function IngestionPanel() {
     setError(undefined);
     setResult(undefined);
 
-    if (parsedUrls.length === 0 && !notes.trim()) {
-      setError("Paste a YouTube video URL, article/webpage URL, or notes.");
+    if (parsedUrls.length === 0 && !notes.trim() && files.length === 0) {
+      setError("Paste a YouTube video URL, article/webpage URL, notes, or upload a supported file.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
+      const body = new FormData();
+      body.set("urls", parsedUrls.join("\n"));
+      body.set("notes", notes);
+      for (const file of files) {
+        body.append("files", file);
+      }
+
       const response = await fetch("/api/process-content", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          urls: parsedUrls,
-          notes
-        })
+        body
       });
 
       const payload = await response.json();
@@ -57,6 +62,36 @@ export function IngestionPanel() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleFiles(files: FileList | null) {
+    setFileMessage(undefined);
+    if (!files?.length) {
+      setFiles([]);
+      return;
+    }
+
+    const selected = [...files].slice(0, 2);
+    const rejected = [...files].slice(2).map((file) => file.name);
+    const acceptedFiles: File[] = [];
+
+    for (const file of selected) {
+      if (file.size > 4 * 1024 * 1024) {
+        rejected.push(`${file.name} is larger than 4 MB`);
+        continue;
+      }
+      if (!isSupportedFile(file)) {
+        rejected.push(`${file.name} is not a supported PDF/text/html file`);
+        continue;
+      }
+      acceptedFiles.push(file);
+    }
+
+    setFiles(acceptedFiles);
+    setFileMessage([
+      acceptedFiles.length ? `Ready to upload ${acceptedFiles.map((file) => file.name).join(", ")}.` : "",
+      rejected.length ? `Skipped: ${rejected.join("; ")}.` : ""
+    ].filter(Boolean).join(" "));
   }
 
   return (
@@ -87,6 +122,19 @@ export function IngestionPanel() {
             placeholder="Optional: paste transcript text, article text, notes, or any finance learning material."
             className="mt-2 min-h-32 w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary"
           />
+        </label>
+
+        <label className="block rounded-md border border-border p-3">
+          <span className="text-sm font-medium">Upload files</span>
+          <input
+            type="file"
+            multiple
+            accept=".pdf,.txt,.md,.markdown,.html,.htm,.csv,.text,application/pdf,text/*"
+            onChange={(event) => handleFiles(event.target.files)}
+            className="mt-2 block w-full text-sm"
+          />
+          <p className="mt-2 text-xs text-muted-foreground">Limit: 2 files, 4 MB each. Supported now: PDF, text, markdown, HTML, CSV. For scanned image PDFs, we will need OCR later.</p>
+          {fileMessage ? <p className="mt-2 text-sm text-muted-foreground">{fileMessage}</p> : null}
         </label>
 
         <div className="flex flex-wrap gap-3">
@@ -125,6 +173,11 @@ export function IngestionPanel() {
       ) : null}
     </Card>
   );
+}
+
+function isSupportedFile(file: File) {
+  const name = file.name.toLowerCase();
+  return file.type === "application/pdf" || name.endsWith(".pdf") || file.type.startsWith("text/") || [".txt", ".md", ".markdown", ".html", ".htm", ".csv", ".text"].some((extension) => name.endsWith(extension));
 }
 
 function SummaryItem({ label, value }: { label: string; value: string | number }) {

@@ -8,19 +8,20 @@ export async function POST(request: Request) {
     ? payload.urls.map(String).filter(Boolean)
     : splitUrls(typeof payload.urls === "string" ? payload.urls : "");
   const notes = typeof payload.notes === "string" ? payload.notes.trim() : "";
+  const files = Array.isArray(payload.files) ? payload.files : [];
 
-  if (urls.length === 0 && !notes) {
+  if (urls.length === 0 && !notes && files.length === 0) {
     return NextResponse.json(
       {
         status: "empty_source",
-        message: "Paste a YouTube video URL, article/webpage URL, or notes to extract learning materials."
+        message: "Paste a YouTube video URL, article/webpage URL, notes, or upload a supported file to extract learning materials."
       },
       { status: 400 }
     );
   }
 
   try {
-    const analysis = await extractKnowledge({ urls, notes });
+    const analysis = await extractKnowledge({ urls, notes, files });
     return NextResponse.json({
       status: "processed",
       message:
@@ -44,5 +45,39 @@ async function readPayload(request: Request) {
     return await request.json();
   }
 
-  return Object.fromEntries((await request.formData()).entries());
+  const formData = await request.formData();
+  const files = await parseUploadedFiles(formData.getAll("files"));
+  return {
+    urls: formData.get("urls") ?? "",
+    notes: formData.get("notes") ?? "",
+    files
+  };
+}
+
+async function parseUploadedFiles(items: FormDataEntryValue[]) {
+  const files = items.filter((item): item is File => typeof item !== "string").slice(0, 2);
+  const parsed: Array<{ name: string; text: string }> = [];
+
+  for (const file of files) {
+    if (file.size > 4 * 1024 * 1024) {
+      continue;
+    }
+
+    const name = file.name || "uploaded-file";
+    const lowerName = name.toLowerCase();
+
+    if (file.type === "application/pdf" || lowerName.endsWith(".pdf")) {
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: await file.arrayBuffer() });
+      const result = await parser.getText();
+      parsed.push({ name, text: result.text });
+      continue;
+    }
+
+    if (file.type.startsWith("text/") || [".txt", ".md", ".markdown", ".html", ".htm", ".csv"].some((extension) => lowerName.endsWith(extension))) {
+      parsed.push({ name, text: await file.text() });
+    }
+  }
+
+  return parsed;
 }

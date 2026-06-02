@@ -42,9 +42,17 @@ export default function ResourceDetailPage({ params }: { params: { id: string } 
         <ResourceActions resource={resource} />
       </Card>
 
+      <Card className="mt-6">
+        <h2 className="text-xl font-semibold">Detailed Study Summary</h2>
+        <p className="mt-3 whitespace-pre-wrap text-muted-foreground">{resource.materials.detailedSummary ?? resource.summary}</p>
+      </Card>
+
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <Section title="Main Ideas" items={resource.materials.mainIdeas} />
         <Section title="Study Guide" items={resource.materials.studyGuide} />
+        <Section title="Formulas, Models, or Rules" items={resource.materials.formulas ?? []} />
+        <Section title="Examples" items={resource.materials.examples ?? []} />
+        <Section title="Valuable Lessons" items={resource.materials.valuableLessons ?? []} />
         <Section title="Practice Tasks" items={resource.materials.actionItems} />
         <Section title="Warnings" items={resource.materials.warnings} />
       </div>
@@ -86,6 +94,12 @@ export default function ResourceDetailPage({ params }: { params: { id: string } 
             <div key={strategy.id} className="rounded-md border border-border p-3">
               <p className="font-semibold">{strategy.name}</p>
               <p className="mt-2 text-sm text-muted-foreground">{strategy.setup}</p>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <SectionList title="Rules" items={[...strategy.entryRules, ...strategy.exitRules]} />
+                <SectionList title="Risk Management" items={strategy.riskManagement} />
+                <SectionList title="Common Mistakes" items={strategy.mistakes} />
+                <SectionList title="Checklist" items={strategy.checklist} />
+              </div>
             </div>
           )) : <p className="text-muted-foreground">No strategies or frameworks extracted.</p>}
         </div>
@@ -112,6 +126,19 @@ export default function ResourceDetailPage({ params }: { params: { id: string } 
         title="Ask AI About This Resource"
       />
     </>
+  );
+}
+
+function SectionList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div>
+      <p className="text-sm font-semibold">{title}</p>
+      {items.length ? (
+        <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-muted-foreground">
+          {items.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      ) : <p className="mt-1 text-sm text-muted-foreground">No items extracted.</p>}
+    </div>
   );
 }
 

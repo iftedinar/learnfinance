@@ -15,11 +15,15 @@ type YoutubeMetadata = {
 
 type ModelAnalysis = {
   summary: string;
+  detailedSummary: string;
   difficulty: "beginner" | "intermediate" | "advanced";
   keyConcepts: string[];
   mainIdeas: string[];
   studyGuide: string[];
   actionItems: string[];
+  formulas: string[];
+  examples: string[];
+  valuableLessons: string[];
   warnings: string[];
   quizQuestions: Array<{ question: string; choices: string[]; answer: string; explanation: string }>;
   simulationPrompts: Array<{ title: string; scenario: string; choices: string[]; answer: string; explanation: string }>;
@@ -162,7 +166,7 @@ async function analyzeWithOpenAI(metadata: YoutubeMetadata, transcript: string):
         {
           role: "system",
           content:
-            "You extract finance learning materials from YouTube transcript text. Return only valid JSON. Do not give financial advice, buy/sell signals, or guaranteed outcomes."
+            "You extract deep finance learning materials from YouTube transcript text. Return only valid JSON. Prioritize detail, mechanisms, formulas, assumptions, examples, limitations, and practice. Do not give financial advice, buy/sell signals, or guaranteed outcomes."
         },
         {
           role: "user",
@@ -179,11 +183,15 @@ ${content}
 Return JSON with this exact shape:
 {
   "summary": "short educational summary",
+  "detailedSummary": "long detailed study summary with the important arguments, mechanisms, assumptions, evidence, conclusions, limitations, and why they matter",
   "difficulty": "beginner",
   "keyConcepts": ["concept"],
   "mainIdeas": ["idea"],
   "studyGuide": ["what to study from this video"],
   "actionItems": ["paper practice or note-taking task"],
+  "formulas": ["formula/model/rule and explanation, if any"],
+  "examples": ["concrete example from or inspired by the material"],
+  "valuableLessons": ["valuable lesson or takeaway for finance learning"],
   "warnings": ["risk or accuracy warning"],
   "quizQuestions": [{"question": "question", "choices": ["A", "B", "C"], "answer": "A", "explanation": "why this is correct"}],
   "simulationPrompts": [{"title": "scenario title", "scenario": "scenario", "choices": ["choice"], "answer": "best answer", "explanation": "feedback"}],
@@ -242,8 +250,12 @@ function buildVideo(metadata: YoutubeMetadata, transcript: { hasTranscript: bool
     difficulty: analysis.difficulty,
     materials: {
       mainIdeas: analysis.mainIdeas,
+      detailedSummary: analysis.detailedSummary,
       studyGuide: analysis.studyGuide,
       actionItems: analysis.actionItems,
+      formulas: analysis.formulas,
+      examples: analysis.examples,
+      valuableLessons: analysis.valuableLessons,
       warnings: analysis.warnings,
       quizQuestions: analysis.quizQuestions,
       simulationPrompts: analysis.simulationPrompts
@@ -263,11 +275,15 @@ function fallbackAnalysis(metadata: YoutubeMetadata, transcript: string): ModelA
     summary: transcript
       ? `Transcript was retrieved for "${metadata.title}", but AI analysis could not run. Add a valid OPENAI_API_KEY to generate structured learning materials.`
       : `Only metadata is available for "${metadata.title}". Add transcript access and OPENAI_API_KEY to generate full learning materials.`,
+    detailedSummary: "Detailed extraction could not run because AI analysis was unavailable.",
     difficulty: "beginner",
     keyConcepts: [],
     mainIdeas: [],
     studyGuide: transcript ? ["Review the transcript manually until AI analysis is available."] : ["Transcript is missing, so this cannot be accurately summarized yet."],
     actionItems: ["Confirm API keys are set in Vercel and restart/redeploy the app."],
+    formulas: [],
+    examples: [],
+    valuableLessons: [],
     warnings: ["Do not treat metadata-only output as a full video summary."],
     quizQuestions: [],
     simulationPrompts: [],
@@ -279,11 +295,15 @@ function fallbackAnalysis(metadata: YoutubeMetadata, transcript: string): ModelA
 function normalizeModelAnalysis(value: Partial<ModelAnalysis>): ModelAnalysis {
   return {
     summary: stringOr(value.summary, "No summary returned."),
+    detailedSummary: stringOr(value.detailedSummary, stringOr(value.summary, "No detailed summary returned.")),
     difficulty: difficultyOr(value.difficulty),
     keyConcepts: stringArray(value.keyConcepts),
     mainIdeas: stringArray(value.mainIdeas),
     studyGuide: stringArray(value.studyGuide),
     actionItems: stringArray(value.actionItems),
+    formulas: stringArray(value.formulas),
+    examples: stringArray(value.examples),
+    valuableLessons: stringArray(value.valuableLessons),
     warnings: stringArray(value.warnings),
     quizQuestions: Array.isArray(value.quizQuestions) ? value.quizQuestions.map(normalizeQuiz).slice(0, 8) : [],
     simulationPrompts: Array.isArray(value.simulationPrompts) ? value.simulationPrompts.map(normalizeSimulation).slice(0, 8) : [],

@@ -2,16 +2,17 @@ import OpenAI from "openai";
 import { analyzeYoutubeVideos, extractYoutubeVideoId } from "@/lib/server-video-analysis";
 import type { LearningAnalysis, LearningGlossaryTerm, LearningStrategy, LearningVideo } from "@/lib/learning-materials";
 
-const maxContentCharacters = 30000;
+const maxContentCharacters = 90000;
 
 type ExtractionInput = {
   urls: string[];
   notes?: string;
+  files?: Array<{ name: string; text: string }>;
 };
 
 type ExtractedSource = {
   id: string;
-  sourceType: "article" | "notes";
+  sourceType: "article" | "notes" | "file";
   title: string;
   url: string;
   text: string;
@@ -20,11 +21,15 @@ type ExtractedSource = {
 
 type ModelAnalysis = {
   summary: string;
+  detailedSummary: string;
   difficulty: "beginner" | "intermediate" | "advanced";
   keyConcepts: string[];
   mainIdeas: string[];
   studyGuide: string[];
   actionItems: string[];
+  formulas: string[];
+  examples: string[];
+  valuableLessons: string[];
   warnings: string[];
   quizQuestions: Array<{ question: string; choices: string[]; answer: string; explanation: string }>;
   simulationPrompts: Array<{ title: string; scenario: string; choices: string[]; answer: string; explanation: string }>;
@@ -54,6 +59,21 @@ export async function extractKnowledge(input: ExtractionInput): Promise<Learning
       sourceType: "notes",
       title: "Pasted Notes",
       url: "pasted-notes",
+      text,
+      missing: []
+    });
+  }
+
+  for (const file of input.files ?? []) {
+    const text = file.text.trim().slice(0, maxContentCharacters);
+    if (!text) {
+      continue;
+    }
+    sources.push({
+      id: `file-${hashText(file.name + text)}`,
+      sourceType: "file",
+      title: file.name,
+      url: "uploaded-file",
       text,
       missing: []
     });
@@ -129,9 +149,13 @@ async function analyzeTextSource(source: ExtractedSource): Promise<LearningAnaly
     keyConcepts: modelAnalysis.keyConcepts,
     difficulty: modelAnalysis.difficulty,
     materials: {
+      detailedSummary: modelAnalysis.detailedSummary,
       mainIdeas: modelAnalysis.mainIdeas,
       studyGuide: modelAnalysis.studyGuide,
       actionItems: modelAnalysis.actionItems,
+      formulas: modelAnalysis.formulas,
+      examples: modelAnalysis.examples,
+      valuableLessons: modelAnalysis.valuableLessons,
       warnings: modelAnalysis.warnings,
       quizQuestions: modelAnalysis.quizQuestions,
       simulationPrompts: modelAnalysis.simulationPrompts
@@ -178,7 +202,7 @@ async function analyzeWithOpenAI(source: ExtractedSource): Promise<ModelAnalysis
         {
           role: "system",
           content:
-            "You extract finance learning materials from user-provided source text. Return only valid JSON. Do not give financial advice, buy/sell instructions, or guaranteed outcomes."
+            "You extract deep finance learning materials from user-provided source text. Return only valid JSON. Prioritize detail, mechanisms, formulas, assumptions, examples, limitations, evidence, methods, results, and practice. Write for a learner who wants to master the material, not skim it. Do not give financial advice, buy/sell instructions, or guaranteed outcomes."
         },
         {
           role: "user",
@@ -191,17 +215,21 @@ Missing source data: ${source.missing.length ? source.missing.join(", ") : "none
 Content:
 ${source.text}
 
-Return JSON with:
+Return detailed JSON with:
 {
-  "summary": "short summary",
+  "summary": "short executive summary, 3-5 sentences",
+  "detailedSummary": "long detailed study summary of at least 900 words when source text supports it. Cover the thesis, background, methods, mechanisms, assumptions, evidence, results, limitations, implications, and why a finance learner should care.",
   "difficulty": "beginner",
-  "keyConcepts": ["concept"],
-  "mainIdeas": ["main idea"],
-  "studyGuide": ["study point"],
-  "actionItems": ["practice task"],
+  "keyConcepts": ["concept with short explanation"],
+  "mainIdeas": ["detailed main idea with why it matters"],
+  "studyGuide": ["specific item the learner should understand deeply, with details"],
+  "actionItems": ["practice task or problem to solve"],
+  "formulas": ["formula/model/rule and explanation, if any"],
+  "examples": ["concrete example from or inspired by the material"],
+  "valuableLessons": ["valuable lesson or takeaway for finance learning"],
   "warnings": ["risk or accuracy warning"],
-  "quizQuestions": [{"question": "question", "choices": ["A", "B", "C"], "answer": "A", "explanation": "why this is correct"}],
-  "simulationPrompts": [{"title": "scenario title", "scenario": "scenario", "choices": ["choice"], "answer": "best answer", "explanation": "feedback"}],
+  "quizQuestions": [{"question": "challenging question", "choices": ["A", "B", "C", "D"], "answer": "A", "explanation": "why this is correct and why alternatives are weaker"}],
+  "simulationPrompts": [{"title": "scenario title", "scenario": "realistic finance learning scenario", "choices": ["choice"], "answer": "best answer", "explanation": "feedback and reasoning"}],
   "strategies": [{
     "name": "strategy/framework/concept",
     "marketType": "stocks/options/crypto/forex/investing/personal finance/etc",
@@ -240,11 +268,15 @@ Return JSON with:
 function fallbackAnalysis(source: ExtractedSource, reason: string): ModelAnalysis {
   return {
     summary: `Could not run full AI extraction for "${source.title}". ${reason}`,
+    detailedSummary: `Source text was captured, but detailed AI extraction could not run. ${reason}`,
     difficulty: "beginner",
     keyConcepts: [],
     mainIdeas: source.text ? ["Source text was captured, but structured AI extraction did not complete."] : [],
     studyGuide: ["Confirm OPENAI_API_KEY is set in Vercel and try again."],
     actionItems: ["Try pasting source text directly if the article or transcript cannot be fetched."],
+    formulas: [],
+    examples: [],
+    valuableLessons: [],
     warnings: ["Do not treat this fallback as a full summary."],
     quizQuestions: [],
     simulationPrompts: [],
@@ -284,23 +316,27 @@ function htmlToText(html: string) {
 function normalizeModelAnalysis(value: Partial<ModelAnalysis>): ModelAnalysis {
   return {
     summary: stringOr(value.summary, "No summary returned."),
+    detailedSummary: stringOr(value.detailedSummary, stringOr(value.summary, "No detailed summary returned.")),
     difficulty: difficultyOr(value.difficulty),
-    keyConcepts: stringArray(value.keyConcepts),
-    mainIdeas: stringArray(value.mainIdeas),
-    studyGuide: stringArray(value.studyGuide),
-    actionItems: stringArray(value.actionItems),
-    warnings: stringArray(value.warnings),
-    quizQuestions: Array.isArray(value.quizQuestions) ? value.quizQuestions.map(normalizeQuiz).slice(0, 8) : [],
-    simulationPrompts: Array.isArray(value.simulationPrompts) ? value.simulationPrompts.map(normalizeSimulation).slice(0, 8) : [],
-    strategies: Array.isArray(value.strategies) ? value.strategies.map(normalizeStrategy).slice(0, 8) : [],
-    glossaryTerms: Array.isArray(value.glossaryTerms) ? value.glossaryTerms.map(normalizeGlossaryTerm).slice(0, 20) : []
+    keyConcepts: stringArray(value.keyConcepts, 30),
+    mainIdeas: stringArray(value.mainIdeas, 25),
+    studyGuide: stringArray(value.studyGuide, 30),
+    actionItems: stringArray(value.actionItems, 20),
+    formulas: stringArray(value.formulas, 20),
+    examples: stringArray(value.examples, 20),
+    valuableLessons: stringArray(value.valuableLessons, 25),
+    warnings: stringArray(value.warnings, 15),
+    quizQuestions: Array.isArray(value.quizQuestions) ? value.quizQuestions.map(normalizeQuiz).slice(0, 15) : [],
+    simulationPrompts: Array.isArray(value.simulationPrompts) ? value.simulationPrompts.map(normalizeSimulation).slice(0, 12) : [],
+    strategies: Array.isArray(value.strategies) ? value.strategies.map(normalizeStrategy).slice(0, 15) : [],
+    glossaryTerms: Array.isArray(value.glossaryTerms) ? value.glossaryTerms.map(normalizeGlossaryTerm).slice(0, 40) : []
   };
 }
 
 function normalizeQuiz(value: { question?: unknown; choices?: unknown; answer?: unknown; explanation?: unknown }) {
   return {
     question: stringOr(value.question, "No question returned."),
-    choices: stringArray(value.choices).slice(0, 5),
+    choices: stringArray(value.choices, 5).slice(0, 5),
     answer: stringOr(value.answer, "No answer returned."),
     explanation: stringOr(value.explanation, "No explanation returned.")
   };
@@ -310,7 +346,7 @@ function normalizeSimulation(value: { title?: unknown; scenario?: unknown; choic
   return {
     title: stringOr(value.title, "Practice Scenario"),
     scenario: stringOr(value.scenario, "No scenario returned."),
-    choices: stringArray(value.choices).slice(0, 5),
+    choices: stringArray(value.choices, 5).slice(0, 5),
     answer: stringOr(value.answer, "No answer returned."),
     explanation: stringOr(value.explanation, "No explanation returned.")
   };
@@ -322,14 +358,14 @@ function normalizeStrategy(value: Partial<Omit<LearningStrategy, "id" | "videoId
     marketType: stringOr(value.marketType, "finance"),
     difficulty: difficultyOr(value.difficulty),
     setup: stringOr(value.setup, "No setup returned."),
-    indicators: stringArray(value.indicators),
-    entryRules: stringArray(value.entryRules),
-    exitRules: stringArray(value.exitRules),
-    stopLossRules: stringArray(value.stopLossRules),
-    riskManagement: stringArray(value.riskManagement),
+    indicators: stringArray(value.indicators, 12),
+    entryRules: stringArray(value.entryRules, 15),
+    exitRules: stringArray(value.exitRules, 15),
+    stopLossRules: stringArray(value.stopLossRules, 15),
+    riskManagement: stringArray(value.riskManagement, 15),
     example: stringOr(value.example, "No example returned."),
-    mistakes: stringArray(value.mistakes),
-    checklist: stringArray(value.checklist)
+    mistakes: stringArray(value.mistakes, 15),
+    checklist: stringArray(value.checklist, 20)
   };
 }
 
@@ -340,8 +376,8 @@ function normalizeGlossaryTerm(value: Partial<LearningGlossaryTerm>) {
   };
 }
 
-function stringArray(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 12) : [];
+function stringArray(value: unknown, limit = 12) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, limit) : [];
 }
 
 function stringOr(value: unknown, fallback: string) {
